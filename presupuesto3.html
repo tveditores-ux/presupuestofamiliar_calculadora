@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Presupuesto familiar móvil</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --verde: #2f4f2f;
+    --fondo: #f5f5f5;
+    --blanco: #ffffff;
+    --borde: #dcdcdc;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 0;
+    background: var(--fondo);
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--blanco);
+  }
+
+  header {
+    padding: 12px 16px;
+    background: var(--verde);
+    color: var(--blanco);
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  header p {
+    margin: 4px 0 0 0;
+    font-size: 0.78rem;
+    opacity: 0.9;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--borde);
+    background: #fafafa;
+  }
+
+  .tab-button {
+    flex: 1;
+    padding: 10px 4px;
+    font-size: 0.8rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .tab-button.active {
+    background: var(--blanco);
+    border-bottom: 2px solid var(--verde);
+    font-weight: 600;
+    color: var(--verde);
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+  }
+
+  .section {
+    margin-bottom: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--borde);
+    background: #fafafa;
+  }
+
+  .section h2 {
+    margin: 0 0 6px 0;
+    font-size: 0.95rem;
+    color: var(--verde);
+  }
+
+  .section small {
+    font-size: 0.72rem;
+    color: #555;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  button {
+    border: none;
+    border-radius: 16px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .btn-add {
+    background: var(--verde);
+    color: var(--blanco);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+
+  th, td {
+    padding: 4px 2px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  th {
+    text-align: left;
+    background: #f0f0f0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid #cccccc;
+    font-size: 0.78rem;
+  }
+
+  .view {
+    display: none;
+  }
+
+  .view.active {
+    display: block;
+  }
+
+  .totals {
+    padding: 10px 12px;
+    background: var(--verde);
+    color: var(--blanco);
+    font-size: 0.8rem;
+  }
+
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 3px 0;
+  }
+
+  .totals-row strong {
+    font-weight: 600;
+  }
+
+  .totals hr {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.3);
+    margin: 6px 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Presupuesto familiar mensual</h1>
+    <p>Versión móvil · Presupuesto + gastos diarios + divisas</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-button active" data-view="presupuesto">Presupuesto</button>
+    <button class="tab-button" data-view="diario">Gastos diarios</button>
+    <button class="tab-button" data-view="divisas">Divisas</button>
+  </div>
+
+  <div class="content">
+    <!-- VISTA PRESUPUESTO -->
+    <div class="view active" id="view-presupuesto">
+      <!-- Ingresos -->
+      <div class="section">
+        <div class="section-header">
+          <h2>Ingresos mensuales</h2>
+          <button class="btn-add" onclick="addRow('ingresos')">+ ingreso</button>
+        </div>
+        <small>Incluye todos los ingresos regulares del hogar.</small>
+        <table>
+          <thead>
+            <tr>
+              <th>Fuente</th>
+              <th>Monto</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-ingresos">
+            <tr>
+              <td>Sueldo principal</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="ingresos"></td>
+            </tr>
+            <tr>
+              <td>Ingresos adicionales</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="ingresos"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Gastos fijos -->
+      <div class="section">
+        <div class="section-header">
+          <h2>Gastos fijos</h2>
+          <button class="btn-add" onclick="addRow('fijos')">+ ítem</button>
+        </div>
+        <small>Gastos que se repiten cada mes.</small>
+        <table>
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th>Monto</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-fijos">
+            <tr>
+              <td>Comida en casa</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Condominio / alquiler</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Internet</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Electricidad</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Gasolina / transporte</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Medicina</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Peluquería / cuidado personal</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Comida fuera de casa</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+            <tr>
+              <td>Odontología</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="fijos"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Gastos ocasionales -->
+      <div class="section">
+        <div class="section-header">
+          <h2>Gastos ocasionales</h2>
+          <button class="btn-add" onclick="addRow('ocasionales')">+ ítem</button>
+        </div>
+        <small>Gastos que no ocurren todos los meses, pero puedes prorratear.</small>
+        <table>
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th>Monto mensual estimado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-ocasionales">
+            <tr>
+              <td>Ropa y zapatos</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="ocasionales"></td>
+            </tr>
+            <tr>
+              <td>Viajes / vacaciones</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="ocasionales"></td>
+            </tr>
+            <tr>
+              <td>Regalos y eventos</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="ocasionales"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Deudas -->
+      <div class="section">
+        <div class="section-header">
+          <h2>Deudas y compromisos</h2>
+          <button class="btn-add" onclick="addRow('deudas')">+ ítem</button>
+        </div>
+        <small>Pagos mensuales de créditos, préstamos, etc.</small>
+        <table>
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th>Pago mensual</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-deudas">
+            <tr>
+              <td>Tarjeta de crédito</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="deudas"></td>
+            </tr>
+            <tr>
+              <td>Préstamo personal</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="deudas"></td>
+            </tr>
+            <tr>
+              <td>Otros compromisos</td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="deudas"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VISTA GASTOS DIARIOS -->
+    <div class="view" id="view-diario">
+      <div class="section">
+        <div class="section-header">
+          <h2>Registro de gastos diarios</h2>
+          <button class="btn-add" onclick="addDailyRow()">+ gasto</button>
+        </div>
+        <small>Registra cada gasto del día. Se descontará del saldo de tu presupuesto.</small>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Detalle</th>
+              <th>Monto (moneda que uses)</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-diario">
+            <tr>
+              <td><input type="date" class="daily-date"></td>
+              <td><input type="text" placeholder="Ej: mercado, taxi"></td>
+              <td><input type="number" min="0" step="0.01" class="amount" data-section="diarios"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section">
+        <small>Tip: puedes usar la pestaña de divisas para pasar Bs o USDT a USD y luego escribir el monto en tus gastos.</small>
+      </div>
+    </div>
+
+    <!-- VISTA DIVISAS -->
+    <div class="view" id="view-divisas">
+      <div class="section">
+        <h2>Tasas de cambio</h2>
+        <small>Coloca las tasas actuales que estés usando.</small>
+        <table>
+          <tbody>
+            <tr>
+              <td>1 USD en Bs</td>
+              <td><input type="number" id="rate-usd-bs" min="0" step="0.0001" placeholder="Ej: 40.5"></td>
+            </tr>
+            <tr>
+              <td>1 USDT en Bs</td>
+              <td><input type="number" id="rate-usdt-bs" min="0" step="0.0001" placeholder="Ej: 40.5"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>Bs ⇄ USD</h2>
+        <small>Usa la tasa de arriba. Copia luego el resultado en tus gastos en USD.</small>
+        <table>
+          <tbody>
+            <tr>
+              <td>Bs → USD</td>
+              <td><input type="number" id="bs-usd" min="0" step="0.01" placeholder="Monto en Bs"></td>
+              <td><input type="number" id="usd-result" step="0.01" placeholder="USD" readonly></td>
+            </tr>
+            <tr>
+              <td>USD → Bs</td>
+              <td><input type="number" id="usd-bs" min="0" step="0.01" placeholder="Monto en USD"></td>
+              <td><input type="number" id="usd-bs-result" step="0.01" placeholder="Bs" readonly></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>Bs ⇄ USDT</h2>
+        <small>Usa la tasa que definiste para USDT.</small>
+        <table>
+          <tbody>
+            <tr>
+              <td>Bs → USDT</td>
+              <td><input type="number" id="bs-usdt" min="0" step="0.01" placeholder="Monto en Bs"></td>
+              <td><input type="number" id="usdt-result" step="0.01" placeholder="USDT" readonly></td>
+            </tr>
+            <tr>
+              <td>USDT → Bs</td>
+              <td><input type="number" id="usdt-bs" min="0" step="0.01" placeholder="Monto en USDT"></td>
+              <td><input type="number" id="usdt-bs-result" step="0.01" placeholder="Bs" readonly></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOTALES GLOBALES -->
+  <div class="totals">
+    <div class="totals-row">
+      <span>Ingresos totales</span>
+      <strong id="total-ingresos">0.00</strong>
+    </div>
+    <div class="totals-row">
+      <span>Gastos fijos</span>
+      <strong id="total-fijos">0.00</strong>
+    </div>
+    <div class="totals-row">
+      <span>Gastos ocasionales</span>
+      <strong id="total-ocasionales">0.00</strong>
+    </div>
+    <div class="totals-row">
+      <span>Deudas</span>
+      <strong id="total-deudas">0.00</strong>
+    </div>
+    <div class="totals-row">
+      <span><strong>Total gastos presupuesto</strong></span>
+      <strong id="total-gastos">0.00</strong>
+    </div>
+    <hr>
+    <div class="totals-row">
+      <span>Saldo antes de gastos diarios</span>
+      <strong id="saldo-previo">0.00</strong>
+    </div>
+    <div class="totals-row">
+      <span>Gastos diarios registrados</span>
+      <strong id="total-diarios">0.00</strong>
+    </div>
+    <div class="totals-row">
+      <span><strong>Saldo final disponible</strong></span>
+      <strong id="saldo-final">0.00</strong>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Tabs
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const views = {
+    presupuesto: document.getElementById('view-presupuesto'),
+    diario: document.getElementById('view-diario'),
+    divisas: document.getElementById('view-divisas')
+  };
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const viewName = btn.dataset.view;
+      Object.keys(views).forEach(name => {
+        views[name].classList.toggle('active', name === viewName);
+      });
+    });
+  });
+
+  function recalcTotals() {
+    const totals = {
+      ingresos: 0,
+      fijos: 0,
+      ocasionales: 0,
+      deudas: 0,
+      diarios: 0
+    };
+
+    const inputs = document.querySelectorAll('.amount');
+    inputs.forEach(input => {
+      const section = input.dataset.section;
+      if (!section) return;
+      const raw = (input.value || "").toString().replace(",", ".");
+      const val = parseFloat(raw);
+      if (!isNaN(val) && totals.hasOwnProperty(section)) {
+        totals[section] += val;
+      }
+    });
+
+    const gastosPresupuesto = totals.fijos + totals.ocasionales + totals.deudas;
+    const saldoPrevio = totals.ingresos - gastosPresupuesto;
+    const saldoFinal = saldoPrevio - totals.diarios;
+
+    document.getElementById('total-ingresos').textContent = totals.ingresos.toFixed(2);
+    document.getElementById('total-fijos').textContent = totals.fijos.toFixed(2);
+    document.getElementById('total-ocasionales').textContent = totals.ocasionales.toFixed(2);
+    document.getElementById('total-deudas').textContent = totals.deudas.toFixed(2);
+    document.getElementById('total-gastos').textContent = gastosPresupuesto.toFixed(2);
+    document.getElementById('saldo-previo').textContent = saldoPrevio.toFixed(2);
+    document.getElementById('total-diarios').textContent = totals.diarios.toFixed(2);
+    document.getElementById('saldo-final').textContent = saldoFinal.toFixed(2);
+  }
+
+  function addRow(section) {
+    const tbody = document.getElementById('tbody-' + section);
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" placeholder="Nuevo ítem"></td>
+      <td><input type="number" min="0" step="0.01" class="amount" data-section="${section}"></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function addDailyRow() {
+    const tbody = document.getElementById('tbody-diario');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="date" class="daily-date"></td>
+      <td><input type="text" placeholder="Detalle"></td>
+      <td><input type="number" min="0" step="0.01" class="amount" data-section="diarios"></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  function parseVal(id) {
+    const el = document.getElementById(id);
+    if (!el) return NaN;
+    const raw = (el.value || "").toString().replace(",", ".");
+    const v = parseFloat(raw);
+    return isNaN(v) ? NaN : v;
+  }
+
+  function updateDivisas() {
+    const rateUsdBs = parseVal('rate-usd-bs');
+    const rateUsdtBs = parseVal('rate-usdt-bs');
+
+    // Bs -> USD
+    const bsUsd = parseVal('bs-usd');
+    const usdResultEl = document.getElementById('usd-result');
+    if (!isNaN(bsUsd) && rateUsdBs > 0) {
+      usdResultEl.value = (bsUsd / rateUsdBs).toFixed(2);
+    } else {
+      usdResultEl.value = "";
+    }
+
+    // USD -> Bs
+    const usdBs = parseVal('usd-bs');
+    const usdBsRes = document.getElementById('usd-bs-result');
+    if (!isNaN(usdBs) && rateUsdBs > 0) {
+      usdBsRes.value = (usdBs * rateUsdBs).toFixed(2);
+    } else {
+      usdBsRes.value = "";
+    }
+
+    // Bs -> USDT
+    const bsUsdt = parseVal('bs-usdt');
+    const usdtRes = document.getElementById('usdt-result');
+    if (!isNaN(bsUsdt) && rateUsdtBs > 0) {
+      usdtRes.value = (bsUsdt / rateUsdtBs).toFixed(2);
+    } else {
+      usdtRes.value = "";
+    }
+
+    // USDT -> Bs
+    const usdtBs = parseVal('usdt-bs');
+    const usdtBsRes = document.getElementById('usdt-bs-result');
+    if (!isNaN(usdtBs) && rateUsdtBs > 0) {
+      usdtBsRes.value = (usdtBs * rateUsdtBs).toFixed(2);
+    } else {
+      usdtBsRes.value = "";
+    }
+  }
+
+  document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('amount')) {
+      recalcTotals();
+    }
+
+    const divisasIds = [
+      'rate-usd-bs', 'rate-usdt-bs',
+      'bs-usd', 'usd-bs',
+      'bs-usdt', 'usdt-bs'
+    ];
+
+    if (divisasIds.includes(e.target.id)) {
+      updateDivisas();
+    }
+  });
+</script>
+</body>
+</html>
